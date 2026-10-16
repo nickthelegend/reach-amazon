@@ -13,14 +13,15 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 DEFAULT_PLACES = {
-    # A starter layout for the demo table, in joint degrees (see arm.py).
-    "pills": {"pose": [-40, 25, -10, 45, 0, 60], "medication": True, "aliases": ["medicine", "pill organizer", "tablets", "meds"]},
-    "water": {"pose": [-15, 30, -20, 40, 0, 65], "medication": False, "aliases": ["water bottle", "bottle", "drink"]},
-    "glasses": {"pose": [20, 28, -15, 50, 90, 55], "medication": False, "aliases": ["spectacles", "reading glasses"]},
-    "remote": {"pose": [45, 32, -25, 45, 90, 50], "medication": False, "aliases": ["tv remote", "remote control"]},
-    "phone": {"pose": [65, 26, -12, 48, 0, 55], "medication": False, "aliases": ["mobile", "cell phone"]},
+    # A starter layout for the demo table, in joint degrees (see arm.py). Solved with the
+    # arm's inverse kinematics for items 20-26 cm out at table height, gripper pointing down.
+    "pills": {"pose": [-48.6, 54.6, 47.1, 78.3, 0, 60], "medication": True, "aliases": ["medicine", "pill organizer", "tablets", "meds"]},
+    "water": {"pose": [-16.3, 57.9, 37.7, 74.4, 0, 65], "medication": False, "aliases": ["water bottle", "bottle", "drink"]},
+    "glasses": {"pose": [14.6, 52.5, 55.6, 61.8, 90, 55], "medication": False, "aliases": ["spectacles", "reading glasses"]},
+    "remote": {"pose": [41.4, 56.1, 48.8, 75.1, 90, 50], "medication": False, "aliases": ["tv remote", "remote control"]},
+    "phone": {"pose": [71.6, 52.8, 54.4, 72.7, 0, 55], "medication": False, "aliases": ["mobile", "cell phone"]},
 }
-HANDOVER = [0, -5, 55, -30, 0, 30]  # held out toward the person, gripper still closed on the item
+HANDOVER = [0, 40.5, 26.9, 22.6, 0, 30]  # held out toward the person, gripper still closed on the item
 
 
 @dataclass

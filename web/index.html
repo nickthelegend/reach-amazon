@@ -1,1 +1,273 @@
-<!doctype html><title>Reach</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1ea; --panel: #fffdf8; --line: #e2dccf; --ink: #1d2125; --ink-2: #4c545b; --ink-3: #7b8288;
+    --teal: #1f6f5c; --teal-2: #e3f0ec; --amber: #b86a00; --amber-2: #fbefdc; --red: #c62828; --red-ink: #fff;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171a; --panel: #1d2024; --line: #30353b; --ink: #f1efe9; --ink-2: #c0c4c8; --ink-3: #8b9196;
+      --teal: #5cc5a7; --teal-2: #1f3530; --amber: #f2b33d; --amber-2: #3a2e17;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171a; --panel: #1d2024; --line: #30353b; --ink: #f1efe9; --ink-2: #c0c4c8; --ink-3: #8b9196;
+    --teal: #5cc5a7; --teal-2: #1f3530; --amber: #f2b33d; --amber-2: #3a2e17;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 18px/1.45 "Atkinson Hyperlegible", system-ui, sans-serif; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  header h1 { margin: 0; font-size: 28px; letter-spacing: .02em; }
+  header p { margin: 0; color: var(--ink-2); }
+  .backend { font-size: 14px; color: var(--ink-3); }
+  .grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  #view { height: 520px; padding: 0; overflow: hidden; position: relative; }
+  #view canvas { display: block; width: 100%; height: 100%; }
+  .legend { position: absolute; left: 14px; bottom: 12px; font-size: 13px; color: var(--ink-3); }
+  .side { display: grid; gap: 16px; align-content: start; }
+  .status { background: var(--teal-2); border-color: transparent; }
+  .status.wait { background: var(--amber-2); }
+  .status .lbl { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); }
+  .status h2 { margin: 4px 0 0; font-size: 26px; line-height: 1.2; }
+  .stop { width: 100%; font: 700 24px/1 inherit; padding: 22px; border-radius: var(--radius); border: 0; background: var(--red); color: var(--red-ink); cursor: pointer; letter-spacing: .06em; }
+  .stop:active { transform: scale(.99); }
+  .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  button.item, button.got { font: inherit; padding: 14px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; text-align: left; }
+  button.item:hover, button.got:hover { border-color: var(--teal); }
+  button.item small { display: block; color: var(--ink-3); font-size: 13px; }
+  button.got { width: 100%; background: var(--teal); color: #fff; border-color: var(--teal); font-weight: 700; text-align: center; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .say { display: flex; gap: 8px; }
+  .say input { flex: 1; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-width: 0; }
+  .say button { font: inherit; padding: 12px 16px; border-radius: 10px; border: 0; background: var(--ink); color: var(--bg); cursor: pointer; }
+  .bubble { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg); color: var(--ink-2); min-height: 48px; }
+  .bubble b { color: var(--ink); }
+  .note { font-size: 13px; color: var(--ink-3); margin: 8px 0 0; }
+  h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+  ul.log { list-style: none; margin: 0; padding: 0; font-size: 15px; }
+  ul.log li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  ul.log li span:last-child { color: var(--ink-3); }
+  .med { font-size: 17px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } #view { height: 380px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Reach</h1>
+      <p>Ask Alexa, and the arm brings it to you.</p>
+    </div>
+    <div class="backend" id="backend">connecting…</div>
+  </header>
+
+  <div class="grid">
+    <div class="panel" id="view"><div class="legend" id="legend">simulated arm · drag to look around</div></div>
+
+    <div class="side">
+      <div class="panel status" id="statusCard">
+        <div class="lbl">Right now</div>
+        <h2 id="status">Resting and ready.</h2>
+      </div>
+
+      <button class="stop" id="stop">STOP</button>
+      <button class="got" id="got" disabled>I've got it</button>
+
+      <div class="panel">
+        <h3>Bring me…</h3>
+        <div class="items" id="items"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Say it to Reach</h3>
+        <form class="say" id="sayForm"><input id="sayInput" placeholder="bring me my pills" autocomplete="off"><button>Say</button></form>
+        <div class="bubble" id="bubble">Try “bring me my water”, “I've got it”, “stop”, or “did I take my pills today?”.</div>
+        <p class="note">Typed phrases run the same tools Alexa+ calls over MCP at <code>/mcp</code>.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Medication today</h3>
+        <div class="med" id="med">—</div>
+        <h3 style="margin-top:16px">Recent</h3>
+        <ul class="log" id="log"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const H0 = 0.10, L1 = 0.116, L2 = 0.135, L3 = 0.10;   // must match the server's poses
+const rad = d => d * Math.PI / 180;
+let state = null, pin = sessionStorage.getItem('reachPin') || '';
+
+// ---------------------------------------------------------------- 3-D ----
+const host = $('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+host.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
+camera.position.set(0.62, 0.62, 0.92);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.16, 0.1);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xfff6e8, 0x8a8170, 1.1));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(0.6, 1.2, 0.8); scene.add(sun);
+
+const table = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.02, 0.6), new THREE.MeshStandardMaterial({ color: 0xc9a77c, roughness: .8 }));
+table.position.set(0, -0.01, 0.12); scene.add(table);
+
+const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: .45, metalness: .1 });
+const white = mat(0xf2efe8), dark = mat(0x2b2f33), accent = mat(0x1f6f5c);
+function link(len, r, m) { const g = new THREE.Mesh(new THREE.BoxGeometry(r, len, r), m); g.position.y = len / 2; return g; }
+
+const base = new THREE.Group(); scene.add(base);
+const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.04, 32), dark);
+foot.position.y = 0.02;
+base.add(foot);
+const pillar = link(H0 - 0.04, 0.045, white); pillar.position.y += 0.04; base.add(pillar);
+const shoulder = new THREE.Group(); shoulder.position.y = H0; base.add(shoulder);
+shoulder.add(link(L1, 0.034, white));
+const elbow = new THREE.Group(); elbow.position.y = L1; shoulder.add(elbow);
+elbow.add(link(L2, 0.03, white));
+const wrist = new THREE.Group(); wrist.position.y = L2; elbow.add(wrist);
+wrist.add(link(0.05, 0.03, accent));
+const roll = new THREE.Group(); roll.position.y = 0.05; wrist.add(roll);
+const fingerA = link(L3 - 0.05, 0.012, dark), fingerB = link(L3 - 0.05, 0.012, dark);
+roll.add(fingerA, fingerB);
+const tip = new THREE.Object3D(); tip.position.y = L3 - 0.05; roll.add(tip);
+[shoulder, elbow, wrist].forEach(g => g.add(new THREE.Mesh(new THREE.SphereGeometry(0.022, 20, 16), dark)));
+
+const person = new THREE.Mesh(new THREE.SphereGeometry(0.035, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe0b48a, roughness: .7 }));
+person.position.set(0, 0.24, 0.42); scene.add(person);
+
+const ITEM_COLORS = { pills: 0xd94f3d, water: 0x3d8bd9, glasses: 0x333333, remote: 0x555b62, phone: 0x222222 };
+const itemMeshes = {};
+function fkTip(q) {
+  const [t0, t1, t2, t3] = q.map(rad); const a1 = t1, a2 = a1 + t2, a3 = a2 + t3;
+  const r = L1 * Math.sin(a1) + L2 * Math.sin(a2) + L3 * Math.sin(a3);
+  const z = H0 + L1 * Math.cos(a1) + L2 * Math.cos(a2) + L3 * Math.cos(a3);
+  return new THREE.Vector3(r * Math.sin(t0), z, r * Math.cos(t0));
+}
+function ensureItems(items) {
+  for (const [name, it] of Object.entries(items)) {
+    if (itemMeshes[name]) continue;
+    const geo = name === 'water' ? new THREE.CylinderGeometry(0.022, 0.022, 0.1, 24) : new THREE.BoxGeometry(0.05, 0.03, 0.035);
+    const m = new THREE.Mesh(geo, mat(ITEM_COLORS[name] ?? 0x8a6d3b));
+    const p = fkTip(it.pose); m.userData.home = new THREE.Vector3(p.x, name === 'water' ? 0.05 : 0.015, p.z);
+    m.position.copy(m.userData.home); scene.add(m); itemMeshes[name] = m;
+  }
+}
+
+let shown = [0, -25, 35, 0, 0, 20];
+function pose(q) {
+  base.rotation.y = rad(q[0]); shoulder.rotation.x = rad(q[1]); elbow.rotation.x = rad(q[2]);
+  wrist.rotation.x = rad(q[3]); roll.rotation.y = rad(q[4]);
+  const open = 0.006 + 0.03 * (q[5] / 70); fingerA.position.x = -open; fingerB.position.x = open;
+}
+function resize() { const w = host.clientWidth, h = host.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+const carrying = new Set(['picking it up', 'bringing it to you', 'holding it out']);
+function frame() {
+  if (state) {
+    const j = state.arm.joints, target = [j.base, j.shoulder, j.elbow, j.wrist_flex, j.wrist_roll, j.gripper];
+    shown = shown.map((v, i) => v + (target[i] - v) * 0.35);
+    pose(shown);
+    const job = state.job, held = job && state.busy && carrying.has(job.stage) ? job.item : null;
+    for (const [name, m] of Object.entries(itemMeshes)) {
+      if (name === held) { tip.getWorldPosition(m.position); m.position.y -= 0.02; }
+      else if (!state.busy || !job || job.item !== name || job.stage === 'going back' || job.stage === 'done') m.position.lerp(m.userData.home, 0.3);
+    }
+  }
+  controls.update(); renderer.render(scene, camera); requestAnimationFrame(frame);
+}
+frame();
+
+// ---------------------------------------------------------------- data ----
+async function poll() {
+  try {
+    state = await (await fetch('/api/state')).json();
+    render();
+  } catch { $('backend').textContent = 'server offline'; }
+  setTimeout(poll, 70);
+}
+poll();
+
+const STAGE_TEXT = (j, busy) => {
+  if (!j) return 'Resting and ready.';
+  if (busy) return j.stage === 'holding it out' ? `Holding out your ${j.item}. Take it, then say “I've got it”.` : `${j.stage[0].toUpperCase()}${j.stage.slice(1)}…`;
+  return { taken: `Brought your ${j.item}.`, not_taken: `Nobody took the ${j.item}, so it went back.`, stopped: 'Stopped.', failed: `Couldn't get the ${j.item}: ${j.detail}` }[j.outcome] || 'Resting and ready.';
+};
+let itemsBuilt = false;
+function render() {
+  $('backend').textContent = `${state.arm.backend === 'sim' ? 'simulated arm' : 'SO-101 arm'} · ${state.auth ? 'Alexa+ linking on' : 'auth off (local)'}`;
+  $('legend').textContent = state.arm.backend === 'sim' ? 'simulated arm · drag to look around' : 'live SO-101 pose · drag to look around';
+  ensureItems(state.items);
+  const j = state.job, holding = state.busy && j && j.stage === 'holding it out';
+  $('status').textContent = STAGE_TEXT(j, state.busy);
+  $('statusCard').classList.toggle('wait', !!holding);
+  $('got').disabled = !holding;
+  if (!itemsBuilt) {
+    $('items').innerHTML = Object.entries(state.items).map(([n, it]) => `<button class="item" data-item="${n}">${n[0].toUpperCase() + n.slice(1)}${it.medication ? '<small>medication</small>' : ''}</button>`).join('');
+    $('items').querySelectorAll('button').forEach(b => b.onclick = () => run('fetch_item', { item: b.dataset.item }));
+    itemsBuilt = true;
+  }
+  $('items').querySelectorAll('button').forEach(b => b.disabled = state.busy);
+  const meds = state.medication_today;
+  $('med').textContent = meds.length ? meds.map(e => `${e.item} at ${new Date(e.t * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`).join(', ') : 'Not handed over yet today.';
+  $('log').innerHTML = state.log.slice().reverse().map(e => `<li><span>${e.item} · ${e.outcome.replace('_', ' ')}</span><span>${new Date(e.t * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span></li>`).join('');
+}
+
+// ---------------------------------------------------------------- actions ----
+async function run(tool, args = {}) {
+  const r = await fetch('/api/do', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Reach-Pin': pin }, body: JSON.stringify({ tool, args }) });
+  if (r.status === 401) {
+    pin = prompt('Household PIN') || ''; sessionStorage.setItem('reachPin', pin);
+    return pin ? run(tool, args) : null;
+  }
+  const j = await r.json(); reply(j.say); return j.say;
+}
+function reply(text) {
+  if (!text) return;
+  $('bubble').innerHTML = `<b>Reach:</b> ${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}`;
+  try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } catch {}
+}
+$('stop').onclick = async () => { await fetch('/api/stop', { method: 'POST' }); reply('Stopped.'); };
+$('got').onclick = () => run('got_it');
+
+// Typed phrases -> the same tools Alexa+ picks between.
+$('sayForm').onsubmit = (e) => {
+  e.preventDefault();
+  const s = $('sayInput').value.trim().toLowerCase(); $('sayInput').value = '';
+  if (!s) return;
+  if (/\b(stop|wait|no+|halt)\b/.test(s)) return $('stop').onclick();
+  if (/(got it|have it|thank|thanks|let go|release)/.test(s)) return run('got_it');
+  if (/(did i|have i).*(pill|med|tablet)/.test(s)) return run('medication_today');
+  if (/(what can you|what do you know|list)/.test(s)) return run('list_items');
+  if (/(what are you doing|status|where are you)/.test(s)) return run('arm_status');
+  const m = s.match(/(?:bring|get|fetch|pass|hand|give)(?: me)?(?: the| my)?\s+(.*)$/);
+  if (m) return run('fetch_item', { item: m[1].replace(/\b(please|now)\b/g, '').trim() });
+  reply("Sorry, I didn't get that. Try “bring me my pills”.");
+};
+</script>
+</body>
+</html>
