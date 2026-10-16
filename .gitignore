@@ -7,3 +7,8 @@ data/raw/
 *.mp4
 *.mov
 .DS_Store
+.venv/
+__pycache__/
+.pytest_cache/
+data/
+.env
