@@ -5,101 +5,118 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reach</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #f4f1ea; --panel: #fffdf8; --line: #e2dccf; --ink: #1d2125; --ink-2: #4c545b; --ink-3: #7b8288;
-    --teal: #1f6f5c; --teal-2: #e3f0ec; --amber: #b86a00; --amber-2: #fbefdc; --red: #c62828; --red-ink: #fff;
+    --teal: #1f6f5c; --teal-2: #e3f0ec; --amber: #b86a00; --amber-2: #fbefdc; --red: #c62828; --accent: #2b6dff;
     --radius: 14px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #15171a; --panel: #1d2024; --line: #30353b; --ink: #f1efe9; --ink-2: #c0c4c8; --ink-3: #8b9196;
-      --teal: #5cc5a7; --teal-2: #1f3530; --amber: #f2b33d; --amber-2: #3a2e17;
+      --teal: #5cc5a7; --teal-2: #1f3530; --amber: #f2b33d; --amber-2: #3a2e17; --accent: #6ea0ff;
     }
   }
   :root[data-theme="dark"] {
     --bg: #15171a; --panel: #1d2024; --line: #30353b; --ink: #f1efe9; --ink-2: #c0c4c8; --ink-3: #8b9196;
-    --teal: #5cc5a7; --teal-2: #1f3530; --amber: #f2b33d; --amber-2: #3a2e17;
+    --teal: #5cc5a7; --teal-2: #1f3530; --amber: #f2b33d; --amber-2: #3a2e17; --accent: #6ea0ff;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 18px/1.45 "Atkinson Hyperlegible", system-ui, sans-serif; }
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
-  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-  header h1 { margin: 0; font-size: 28px; letter-spacing: .02em; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.45 "Atkinson Hyperlegible", system-ui, sans-serif; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 18px 16px 48px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  header h1 { margin: 0; font-size: 28px; }
   header p { margin: 0; color: var(--ink-2); }
-  .backend { font-size: 14px; color: var(--ink-3); }
-  .grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
-  #view { height: 520px; padding: 0; overflow: hidden; position: relative; }
+  header nav { display: flex; gap: 14px; align-items: center; font-size: 14px; color: var(--ink-3); }
+  header nav a { color: var(--accent); font-weight: 700; }
+  .grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  #view { height: 540px; padding: 0; overflow: hidden; position: relative; }
   #view canvas { display: block; width: 100%; height: 100%; }
   .legend { position: absolute; left: 14px; bottom: 12px; font-size: 13px; color: var(--ink-3); }
-  .side { display: grid; gap: 16px; align-content: start; }
+  .stages { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .stages span { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.75); color: #555; border: 1px solid rgba(0,0,0,.06); }
+  .stages span.on { background: var(--teal); color: #fff; }
+  .stages span.done { background: #d9ebe5; color: #1f6f5c; }
+  .side { display: grid; gap: 14px; align-content: start; }
   .status { background: var(--teal-2); border-color: transparent; }
   .status.wait { background: var(--amber-2); }
-  .status .lbl { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); }
-  .status h2 { margin: 4px 0 0; font-size: 26px; line-height: 1.2; }
-  .stop { width: 100%; font: 700 24px/1 inherit; padding: 22px; border-radius: var(--radius); border: 0; background: var(--red); color: var(--red-ink); cursor: pointer; letter-spacing: .06em; }
-  .stop:active { transform: scale(.99); }
-  .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
-  button.item, button.got { font: inherit; padding: 14px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; text-align: left; }
-  button.item:hover, button.got:hover { border-color: var(--teal); }
-  button.item small { display: block; color: var(--ink-3); font-size: 13px; }
-  button.got { width: 100%; background: var(--teal); color: #fff; border-color: var(--teal); font-weight: 700; text-align: center; }
+  .lbl, h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin: 0 0 8px; }
+  .status h2 { margin: 2px 0 0; font-size: 24px; line-height: 1.2; }
+  .battery { font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+  .stop { width: 100%; font: 700 24px/1 inherit; padding: 20px; border-radius: var(--radius); border: 0; background: var(--red); color: #fff; cursor: pointer; letter-spacing: .06em; }
+  .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 8px; }
+  button { font: inherit; }
+  button.item, button.sec { padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; text-align: left; }
+  button.item:hover, button.sec:hover { border-color: var(--teal); }
+  button.item small { display: block; color: var(--ink-3); font-size: 12px; }
+  button.got { width: 100%; padding: 14px; border-radius: 12px; border: 0; background: var(--teal); color: #fff; font-weight: 700; cursor: pointer; }
   button:disabled { opacity: .45; cursor: not-allowed; }
-  .say { display: flex; gap: 8px; }
-  .say input { flex: 1; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-width: 0; }
-  .say button { font: inherit; padding: 12px 16px; border-radius: 10px; border: 0; background: var(--ink); color: var(--bg); cursor: pointer; }
-  .bubble { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg); color: var(--ink-2); min-height: 48px; }
-  .bubble b { color: var(--ink); }
-  .note { font-size: 13px; color: var(--ink-3); margin: 8px 0 0; }
-  h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
-  ul.log { list-style: none; margin: 0; padding: 0; font-size: 15px; }
-  ul.log li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-  ul.log li span:last-child { color: var(--ink-3); }
-  .med { font-size: 17px; }
-  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } #view { height: 380px; } }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink-2); cursor: pointer; font-size: 14px; }
+  .tabs button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .teach { display: grid; gap: 10px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row input[type=text] { flex: 1; min-width: 0; font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  .pad { width: 170px; height: 170px; border-radius: 50%; background: var(--bg); border: 1px solid var(--line); position: relative; touch-action: none; flex: none; }
+  .pad .knob { position: absolute; width: 56px; height: 56px; border-radius: 50%; background: var(--teal); left: 57px; top: 57px; box-shadow: 0 4px 10px rgba(0,0,0,.2); }
+  .sliders { flex: 1; display: grid; gap: 4px; min-width: 200px; }
+  .sliders label { display: grid; grid-template-columns: 76px 1fr 46px; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); }
+  .sliders input { width: 100%; }
+  .hint { font-size: 13px; color: var(--ink-3); margin: 0; }
+  ol.calls { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+  ol.calls li { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  ol.calls .tool { color: var(--accent); }
+  ol.calls .ms { color: var(--ink-3); white-space: nowrap; }
+  .med { font-size: 16px; }
+  @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } #view { height: 400px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div>
-      <h1>Reach</h1>
-      <p>Ask Alexa, and the arm brings it to you.</p>
-    </div>
-    <div class="backend" id="backend">connecting…</div>
+    <div><h1>Reach</h1><p>Ask Alexa, and the robot brings it to you.</p></div>
+    <nav><span id="backend">connecting…</span><a href="/alexa">Alexa+ simulator →</a></nav>
   </header>
 
   <div class="grid">
-    <div class="panel" id="view"><div class="legend" id="legend">simulated arm · drag to look around</div></div>
+    <div class="panel" id="view">
+      <div class="stages" id="stages"></div>
+      <div class="legend" id="legend">drag to look around</div>
+    </div>
 
     <div class="side">
       <div class="panel status" id="statusCard">
         <div class="lbl">Right now</div>
         <h2 id="status">Resting and ready.</h2>
+        <div class="battery mono" id="battery"></div>
       </div>
-
       <button class="stop" id="stop">STOP</button>
       <button class="got" id="got" disabled>I've got it</button>
 
       <div class="panel">
-        <h3>Bring me…</h3>
-        <div class="items" id="items"></div>
-      </div>
-
-      <div class="panel">
-        <h3>Say it to Reach</h3>
-        <form class="say" id="sayForm"><input id="sayInput" placeholder="bring me my pills" autocomplete="off"><button>Say</button></form>
-        <div class="bubble" id="bubble">Try “bring me my water”, “I've got it”, “stop”, or “did I take my pills today?”.</div>
-        <p class="note">Typed phrases run the same tools Alexa+ calls over MCP at <code>/mcp</code>.</p>
+        <div class="tabs"><button class="on" data-tab="bring">Bring me…</button><button data-tab="teach">Teach a place</button><button data-tab="calls">MCP calls</button></div>
+        <div data-pane="bring"><div class="items" id="items"></div></div>
+        <div data-pane="teach" class="teach" hidden>
+          <p class="hint">Start at the robot's home spot beside the person. Drive to the item, pose the gripper closed around it, and save. The robot learns the route and drives back by itself.</p>
+          <div class="row"><input type="text" id="teachName" placeholder="item name, e.g. inhaler"><label class="row" style="font-size:14px"><input type="checkbox" id="teachMed"> medication</label></div>
+          <div class="row"><button class="sec" id="teachStart">Start</button><button class="sec" id="teachSave" disabled>Save place</button><button class="sec" id="teachCancel" disabled>Cancel</button></div>
+          <div class="row" style="align-items:flex-start">
+            <div class="pad" id="pad"><div class="knob" id="knob"></div></div>
+            <div class="sliders" id="sliders"></div>
+          </div>
+          <div class="row"><button class="sec" id="setHome">Set home pose</button><button class="sec" id="setHand">Set handover pose</button></div>
+          <p class="hint mono" id="teachInfo"></p>
+        </div>
+        <div data-pane="calls" hidden><ol class="calls" id="calls"><li>No calls yet.</li></ol></div>
       </div>
 
       <div class="panel">
         <h3>Medication today</h3>
         <div class="med" id="med">—</div>
-        <h3 style="margin-top:16px">Recent</h3>
-        <ul class="log" id="log"></ul>
       </div>
     </div>
   </div>
@@ -114,160 +131,238 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const $ = id => document.getElementById(id);
-const H0 = 0.10, L1 = 0.116, L2 = 0.135, L3 = 0.10;   // must match the server's poses
+const H0 = 0.10, L1 = 0.116, L2 = 0.135, L3 = 0.10, DECK = 0.09;   // arm geometry, as in the server's sim poses
 const rad = d => d * Math.PI / 180;
 let state = null, pin = sessionStorage.getItem('reachPin') || '';
 
-// ---------------------------------------------------------------- 3-D ----
+// ---- skid-steer model, identical to the server (reach/arm.py) so taught routes draw where they end
+const SPEED = 0.65, TURN = 0.75, SPIN_MIN = 0.35, V = 0.34, TRACK = 0.17;
+function mix(t, r) {
+  t = Math.abs(t) < .05 ? 0 : Math.max(-1, Math.min(1, t)); r = Math.abs(r) < .05 ? 0 : Math.max(-1, Math.min(1, r));
+  if (t === 0 && r !== 0) { const m = SPIN_MIN + (TURN - SPIN_MIN) * Math.abs(r); const l = r > 0 ? -m : m; return [l, -l]; }
+  const l = t * SPEED - r * TURN, rr = t * SPEED + r * TURN, k = Math.max(1, Math.abs(l), Math.abs(rr)); return [l / k, rr / k];
+}
+function advance([x, y, h], t, r, dt) {
+  const [l, rr] = mix(t, r), v = (l + rr) / 2 * V, w = (rr - l) * V / TRACK;
+  if (Math.abs(w) < 1e-9) return [x - v * Math.sin(h) * dt, y + v * Math.cos(h) * dt, h];
+  const h2 = h + w * dt; return [x + v / w * (Math.cos(h2) - Math.cos(h)), y + v / w * (Math.sin(h2) - Math.sin(h)), h2];
+}
+const routeEnd = route => (route || []).reduce((p, [s, t, r]) => advance(p, t, r, s), [0, 0, 0]);
+
+// ---------------------------------------------------------------- scene
 const host = $('view');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.shadowMap.enabled = true;
 host.prepend(renderer.domElement);
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10);
-camera.position.set(0.62, 0.62, 0.92);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 30);
+camera.position.set(1.25, 1.05, -0.75);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0.16, 0.1);
+controls.target.set(0, 0.12, 0.45);
 controls.enableDamping = true;
-scene.add(new THREE.HemisphereLight(0xfff6e8, 0x8a8170, 1.1));
-const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(0.6, 1.2, 0.8); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xfff6e8, 0x7d7466, 1.15));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(1.2, 2.2, 1.0); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -2, right: 2, top: 2, bottom: -2 }); scene.add(sun);
 
-const table = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.02, 0.6), new THREE.MeshStandardMaterial({ color: 0xc9a77c, roughness: .8 }));
-table.position.set(0, -0.01, 0.12); scene.add(table);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshStandardMaterial({ color: 0xd8cdb8, roughness: .95 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const grid = new THREE.GridHelper(8, 32, 0xb9ad96, 0xc9bea9); grid.position.y = 0.001; scene.add(grid);
 
-const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: .45, metalness: .1 });
-const white = mat(0xf2efe8), dark = mat(0x2b2f33), accent = mat(0x1f6f5c);
-function link(len, r, m) { const g = new THREE.Mesh(new THREE.BoxGeometry(r, len, r), m); g.position.y = len / 2; return g; }
+const M = c => new THREE.MeshStandardMaterial({ color: c, roughness: .5, metalness: .05 });
+const green = M(0x3fbf5a), blue = M(0x2f5bd9), white = M(0xf1eee6), dark = M(0x26292d), orange = M(0xf07a2a);
+function box(w, h, d, m) { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.castShadow = true; return o; }
+function link(len, r, m) { const g = box(r, len, r, m); g.position.y = len / 2; return g; }
 
-const base = new THREE.Group(); scene.add(base);
-const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.04, 32), dark);
-foot.position.y = 0.02;
-base.add(foot);
-const pillar = link(H0 - 0.04, 0.045, white); pillar.position.y += 0.04; base.add(pillar);
-const shoulder = new THREE.Group(); shoulder.position.y = H0; base.add(shoulder);
-shoulder.add(link(L1, 0.034, white));
-const elbow = new THREE.Group(); elbow.position.y = L1; shoulder.add(elbow);
-elbow.add(link(L2, 0.03, white));
-const wrist = new THREE.Group(); wrist.position.y = L2; elbow.add(wrist);
-wrist.add(link(0.05, 0.03, accent));
+// the Thenar Walker: printed tub, four wheels, the arm on the deck
+const rover = new THREE.Group(); scene.add(rover);
+const tub = box(0.196, 0.05, 0.294, green); tub.position.y = 0.065; rover.add(tub);
+const deck = box(0.18, 0.006, 0.25, M(0xc49a6c)); deck.position.y = DECK; rover.add(deck);
+const batt = box(0.07, 0.03, 0.11, dark); batt.position.set(0, DECK + 0.018, -0.07); rover.add(batt);
+const wheels = [];
+for (const [x, z] of [[-0.12, 0.1], [0.12, 0.1], [-0.12, -0.1], [0.12, -0.1]]) {
+  const w = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 28), blue); w.castShadow = true;
+  w.rotation.z = Math.PI / 2; w.position.set(x, 0.07, z); rover.add(w); wheels.push(w);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.045, 20), orange); hub.rotation.z = Math.PI / 2; hub.position.copy(w.position); rover.add(hub);
+}
+const base = new THREE.Group(); base.position.set(0, DECK, 0.06); rover.add(base);
+const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.03, 28), green); foot.position.y = 0.015; base.add(foot);
+const pillar = link(H0 - 0.03, 0.045, green); pillar.position.y += 0.03; base.add(pillar);
+const shoulder = new THREE.Group(); shoulder.position.y = H0; base.add(shoulder); shoulder.add(link(L1, 0.034, blue));
+const elbow = new THREE.Group(); elbow.position.y = L1; shoulder.add(elbow); elbow.add(link(L2, 0.03, green));
+const wrist = new THREE.Group(); wrist.position.y = L2; elbow.add(wrist); wrist.add(link(0.05, 0.03, blue));
 const roll = new THREE.Group(); roll.position.y = 0.05; wrist.add(roll);
-const fingerA = link(L3 - 0.05, 0.012, dark), fingerB = link(L3 - 0.05, 0.012, dark);
-roll.add(fingerA, fingerB);
+const jawA = link(L3 - 0.05, 0.012, blue), jawB = link(L3 - 0.05, 0.012, blue); roll.add(jawA, jawB);
 const tip = new THREE.Object3D(); tip.position.y = L3 - 0.05; roll.add(tip);
-[shoulder, elbow, wrist].forEach(g => g.add(new THREE.Mesh(new THREE.SphereGeometry(0.022, 20, 16), dark)));
+[shoulder, elbow, wrist].forEach(g => { const s = new THREE.Mesh(new THREE.SphereGeometry(0.022, 20, 16), dark); g.add(s); });
 
-const person = new THREE.Mesh(new THREE.SphereGeometry(0.035, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe0b48a, roughness: .7 }));
-person.position.set(0, 0.24, 0.42); scene.add(person);
+// the person at home: a chair and an open hand where the handover happens
+const chair = new THREE.Group(); scene.add(chair);
+const seat = box(0.45, 0.08, 0.45, M(0x8a6d55)); seat.position.y = 0.42; chair.add(seat);
+const back = box(0.45, 0.5, 0.08, M(0x8a6d55)); back.position.set(0, 0.7, -0.22); chair.add(back);
+chair.position.set(-0.62, 0, 0.42); chair.rotation.y = Math.PI / 2;
+const hand = new THREE.Group(); scene.add(hand);
+const palm = box(0.07, 0.02, 0.08, M(0xe0b48a)); hand.add(palm);
+for (let i = 0; i < 4; i++) { const f = box(0.012, 0.012, 0.05, M(0xe0b48a)); f.position.set(-0.025 + i * 0.017, 0, -0.06); hand.add(f); }
 
-const ITEM_COLORS = { pills: 0xd94f3d, water: 0x3d8bd9, glasses: 0x333333, remote: 0x555b62, phone: 0x222222 };
-const itemMeshes = {};
-function fkTip(q) {
-  const [t0, t1, t2, t3] = q.map(rad); const a1 = t1, a2 = a1 + t2, a3 = a2 + t3;
+function fkLocal(q) {   // gripper tip in the rover's frame (x right, y up, z forward)
+  const [t0, t1, t2, t3] = q.map(rad), a1 = t1, a2 = a1 + t2, a3 = a2 + t3;
   const r = L1 * Math.sin(a1) + L2 * Math.sin(a2) + L3 * Math.sin(a3);
   const z = H0 + L1 * Math.cos(a1) + L2 * Math.cos(a2) + L3 * Math.cos(a3);
-  return new THREE.Vector3(r * Math.sin(t0), z, r * Math.cos(t0));
+  return new THREE.Vector3(r * Math.sin(t0), DECK + z, 0.06 + r * Math.cos(t0));
 }
-function ensureItems(items) {
-  for (const [name, it] of Object.entries(items)) {
-    if (itemMeshes[name]) continue;
-    const geo = name === 'water' ? new THREE.CylinderGeometry(0.022, 0.022, 0.1, 24) : new THREE.BoxGeometry(0.05, 0.03, 0.035);
-    const m = new THREE.Mesh(geo, mat(ITEM_COLORS[name] ?? 0x8a6d3b));
-    const p = fkTip(it.pose); m.userData.home = new THREE.Vector3(p.x, name === 'water' ? 0.05 : 0.015, p.z);
-    m.position.copy(m.userData.home); scene.add(m); itemMeshes[name] = m;
+const toWorld = (p, [x, y, h]) => { const c = Math.cos(-h), s = Math.sin(-h); return new THREE.Vector3(x + p.x * c + p.z * s, p.y, y - p.x * s + p.z * c); };
+
+const COLORS = { pills: 0xd94f3d, water: 0x3d8bd9, glasses: 0x333333, remote: 0x555b62, phone: 0x222222 };
+const itemObjs = {};
+function makeItem(name) {
+  const g = new THREE.Group();
+  const shape = name === 'water' ? new THREE.CylinderGeometry(0.022, 0.022, 0.09, 24)
+    : name === 'pills' ? new THREE.BoxGeometry(0.06, 0.025, 0.035) : new THREE.BoxGeometry(0.05, 0.02, 0.03);
+  const m = new THREE.Mesh(shape, M(COLORS[name] ?? 0x9c6b3c)); m.castShadow = true; g.add(m);
+  const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, 1, 16), M(0xcfc6b4)); stand.castShadow = true; scene.add(stand);
+  scene.add(g); return { g, stand };
+}
+function placeItems() {
+  for (const [name, it] of Object.entries(state.items)) {
+    const o = itemObjs[name] || (itemObjs[name] = makeItem(name));
+    const p = toWorld(fkLocal(it.pose), routeEnd(it.route));
+    o.home = new THREE.Vector3(p.x, p.y - 0.015, p.z);
+    const h = Math.max(0.01, o.home.y - 0.03); o.stand.scale.y = h; o.stand.position.set(o.home.x, h / 2, o.home.z);
   }
+  const hp = toWorld(fkLocal(state.handover), [0, 0, 0]); hand.position.set(hp.x, hp.y - 0.03, hp.z + 0.04);
 }
 
-let shown = [0, -25, 35, 0, 0, 20];
+let shown = [0, -25, 35, 0, 0, 20], roverShown = [0, 0, 0];
 function pose(q) {
   base.rotation.y = rad(q[0]); shoulder.rotation.x = rad(q[1]); elbow.rotation.x = rad(q[2]);
   wrist.rotation.x = rad(q[3]); roll.rotation.y = rad(q[4]);
-  const open = 0.006 + 0.03 * (q[5] / 70); fingerA.position.x = -open; fingerB.position.x = open;
+  const open = 0.006 + 0.03 * Math.max(0, Math.min(1, q[5] / 70)); jawA.position.x = -open; jawB.position.x = open;
 }
 function resize() { const w = host.clientWidth, h = host.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
-const carrying = new Set(['picking it up', 'bringing it to you', 'holding it out']);
+const CARRY = new Set(['picking it up', 'bringing it to you', 'holding it out']);
 function frame() {
   if (state) {
-    const j = state.arm.joints, target = [j.base, j.shoulder, j.elbow, j.wrist_flex, j.wrist_roll, j.gripper];
-    shown = shown.map((v, i) => v + (target[i] - v) * 0.35);
-    pose(shown);
-    const job = state.job, held = job && state.busy && carrying.has(job.stage) ? job.item : null;
-    for (const [name, m] of Object.entries(itemMeshes)) {
-      if (name === held) { tip.getWorldPosition(m.position); m.position.y -= 0.02; }
-      else if (!state.busy || !job || job.item !== name || job.stage === 'going back' || job.stage === 'done') m.position.lerp(m.userData.home, 0.3);
+    const j = state.arm.joints, tgt = [j.base, j.shoulder, j.elbow, j.wrist_flex, j.wrist_roll, j.gripper];
+    shown = shown.map((v, i) => v + (tgt[i] - v) * 0.35); pose(shown);
+    const bp = state.arm.base_pose || [0, 0, 0];
+    roverShown = roverShown.map((v, i) => v + (bp[i] - v) * 0.35);
+    rover.position.set(roverShown[0], 0, roverShown[1]); rover.rotation.y = -roverShown[2];
+    const d = state.arm.drive || [0, 0], [l, r] = mix(d[0], d[1]);
+    wheels.forEach((w, i) => { w.rotation.x += (i % 2 ? r : l) * 0.25; });
+    const job = state.job, held = job && state.busy && CARRY.has(job.stage) ? job.item : null;
+    for (const [name, o] of Object.entries(itemObjs)) {
+      if (name === held) { tip.getWorldPosition(o.g.position); o.g.position.y -= 0.02; }
+      else if (o.home) o.g.position.lerp(o.home, 0.3);
     }
   }
   controls.update(); renderer.render(scene, camera); requestAnimationFrame(frame);
 }
 frame();
 
-// ---------------------------------------------------------------- data ----
-async function poll() {
-  try {
-    state = await (await fetch('/api/state')).json();
-    render();
-  } catch { $('backend').textContent = 'server offline'; }
-  setTimeout(poll, 70);
-}
-poll();
+// ---------------------------------------------------------------- data
+const ORDER = ['going to', 'reaching', 'picking it up', 'bringing it to you', 'holding it out', 'going back'];
+const LABEL = ['drive there', 'reach', 'pick up', 'bring it', 'hold it out', 'go home'];
+function stageIndex(s) { return s ? ORDER.findIndex(o => s.startsWith(o)) : -1; }
 
-const STAGE_TEXT = (j, busy) => {
-  if (!j) return 'Resting and ready.';
-  if (busy) return j.stage === 'holding it out' ? `Holding out your ${j.item}. Take it, then say “I've got it”.` : `${j.stage[0].toUpperCase()}${j.stage.slice(1)}…`;
-  return { taken: `Brought your ${j.item}.`, not_taken: `Nobody took the ${j.item}, so it went back.`, stopped: 'Stopped.', failed: `Couldn't get the ${j.item}: ${j.detail}` }[j.outcome] || 'Resting and ready.';
-};
-let itemsBuilt = false;
+let itemsKey = '';
+async function poll() {
+  try { state = await (await fetch('/api/state')).json(); render(); }
+  catch { $('backend').textContent = 'server offline'; }
+  setTimeout(poll, 80);
+}
 function render() {
-  $('backend').textContent = `${state.arm.backend === 'sim' ? 'simulated arm' : 'SO-101 arm'} · ${state.auth ? 'Alexa+ linking on' : 'auth off (local)'}`;
-  $('legend').textContent = state.arm.backend === 'sim' ? 'simulated arm · drag to look around' : 'live SO-101 pose · drag to look around';
-  ensureItems(state.items);
-  const j = state.job, holding = state.busy && j && j.stage === 'holding it out';
-  $('status').textContent = STAGE_TEXT(j, state.busy);
+  const a = state.arm;
+  $('backend').textContent = `${{ sim: 'simulated Walker', walker: 'Thenar Walker (live)', so101: 'SO-101 arm' }[a.backend] || a.backend} · ${state.auth ? 'Alexa+ linking on' : 'local'}`;
+  $('battery').textContent = a.battery_v ? `battery ${a.battery_v.toFixed(2)} V` : '';
+  const key = JSON.stringify([state.items, state.handover]);
+  if (key !== itemsKey) { itemsKey = key; placeItems(); buildItems(); }
+  const j = state.job, busy = state.busy, holding = busy && j && j.stage === 'holding it out';
+  $('status').textContent = !j ? 'Resting and ready.' : busy ? (holding ? `Holding out your ${j.item}. Take it, then say “I've got it”.` : cap(j.stage) + '…')
+    : ({ taken: `Brought your ${j.item}.`, stopped: 'Stopped.', failed: `Couldn't get the ${j.item}: ${j.detail}`, taught: `Learned where the ${j.item} is.` }[j.outcome] || 'Resting and ready.');
   $('statusCard').classList.toggle('wait', !!holding);
   $('got').disabled = !holding;
-  if (!itemsBuilt) {
-    $('items').innerHTML = Object.entries(state.items).map(([n, it]) => `<button class="item" data-item="${n}">${n[0].toUpperCase() + n.slice(1)}${it.medication ? '<small>medication</small>' : ''}</button>`).join('');
-    $('items').querySelectorAll('button').forEach(b => b.onclick = () => run('fetch_item', { item: b.dataset.item }));
-    itemsBuilt = true;
-  }
-  $('items').querySelectorAll('button').forEach(b => b.disabled = state.busy);
+  document.querySelectorAll('#items button').forEach(b => b.disabled = busy || !!state.teach.item);
+  const si = busy ? stageIndex(j.stage) : -1;
+  $('stages').innerHTML = busy && si >= 0 ? LABEL.map((l, i) => `<span class="${i < si ? 'done' : i === si ? 'on' : ''}">${l}</span>`).join('') : '';
   const meds = state.medication_today;
   $('med').textContent = meds.length ? meds.map(e => `${e.item} at ${new Date(e.t * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`).join(', ') : 'Not handed over yet today.';
-  $('log').innerHTML = state.log.slice().reverse().map(e => `<li><span>${e.item} · ${e.outcome.replace('_', ' ')}</span><span>${new Date(e.t * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span></li>`).join('');
+  const calls = state.calls.slice().reverse();
+  if (calls.length) $('calls').innerHTML = calls.map(c => `<li><span class="mono"><span class="tool">${c.tool}</span>(${esc(JSON.stringify(c.args))})</span><span class="ms mono">${c.ms} ms</span></li>`).join('');
+  const t = state.teach;
+  $('teachSave').disabled = $('teachCancel').disabled = !t.item;
+  $('teachStart').disabled = !!t.item || busy;
+  $('teachInfo').textContent = t.item ? `teaching “${t.item}”: ${t.segments} drive segments, ${t.seconds} s recorded` : '';
+  if (!slidersBuilt && a.lo) buildSliders(a);
+  syncSliders(a);
+}
+const cap = s => s[0].toUpperCase() + s.slice(1);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function buildItems() {
+  $('items').innerHTML = Object.entries(state.items).map(([n, it]) =>
+    `<button class="item" data-item="${esc(n)}">${esc(cap(n))}<small>${it.medication ? 'medication · ' : ''}${it.route && it.route.length ? 'drives there' : 'within reach'}</small></button>`).join('');
+  document.querySelectorAll('#items button').forEach(b => b.onclick = () => act('/api/do', { tool: 'fetch_item', args: { item: b.dataset.item } }));
 }
 
-// ---------------------------------------------------------------- actions ----
-async function run(tool, args = {}) {
-  const r = await fetch('/api/do', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Reach-Pin': pin }, body: JSON.stringify({ tool, args }) });
-  if (r.status === 401) {
-    pin = prompt('Household PIN') || ''; sessionStorage.setItem('reachPin', pin);
-    return pin ? run(tool, args) : null;
-  }
-  const j = await r.json(); reply(j.say); return j.say;
+async function act(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Reach-Pin': pin }, body: JSON.stringify(body) });
+  if (r.status === 401) { pin = prompt('Household PIN') || ''; sessionStorage.setItem('reachPin', pin); return pin ? act(url, body) : null; }
+  return r.json();
 }
-function reply(text) {
-  if (!text) return;
-  $('bubble').innerHTML = `<b>Reach:</b> ${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}`;
-  try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } catch {}
-}
-$('stop').onclick = async () => { await fetch('/api/stop', { method: 'POST' }); reply('Stopped.'); };
-$('got').onclick = () => run('got_it');
+$('stop').onclick = () => fetch('/api/stop', { method: 'POST' });
+$('got').onclick = () => act('/api/do', { tool: 'got_it' });
+poll();
 
-// Typed phrases -> the same tools Alexa+ picks between.
-$('sayForm').onsubmit = (e) => {
-  e.preventDefault();
-  const s = $('sayInput').value.trim().toLowerCase(); $('sayInput').value = '';
-  if (!s) return;
-  if (/\b(stop|wait|no+|halt)\b/.test(s)) return $('stop').onclick();
-  if (/(got it|have it|thank|thanks|let go|release)/.test(s)) return run('got_it');
-  if (/(did i|have i).*(pill|med|tablet)/.test(s)) return run('medication_today');
-  if (/(what can you|what do you know|list)/.test(s)) return run('list_items');
-  if (/(what are you doing|status|where are you)/.test(s)) return run('arm_status');
-  const m = s.match(/(?:bring|get|fetch|pass|hand|give)(?: me)?(?: the| my)?\s+(.*)$/);
-  if (m) return run('fetch_item', { item: m[1].replace(/\b(please|now)\b/g, '').trim() });
-  reply("Sorry, I didn't get that. Try “bring me my pills”.");
-};
+// ---------------------------------------------------------------- tabs
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('[data-pane]').forEach(p => p.hidden = p.dataset.pane !== b.dataset.tab);
+});
+
+// ---------------------------------------------------------------- teach mode
+$('teachStart').onclick = () => { const n = $('teachName').value.trim(); if (n) act('/api/teach', { do: 'start', item: n }); };
+$('teachSave').onclick = () => act('/api/teach', { do: 'save', medication: $('teachMed').checked });
+$('teachCancel').onclick = () => act('/api/teach', { do: 'cancel' });
+$('setHome').onclick = () => act('/api/teach', { do: 'home' });
+$('setHand').onclick = () => act('/api/teach', { do: 'handover' });
+
+// joystick: up = forward, left = turn left; sent at 10 Hz while held, centred on release
+const pad = $('pad'), knob = $('knob');
+let stick = null, stickTimer = null;
+function setKnob(dx, dy) { knob.style.left = (57 + dx * 57) + 'px'; knob.style.top = (57 + dy * 57) + 'px'; }
+pad.addEventListener('pointerdown', e => { pad.setPointerCapture(e.pointerId); stick = [0, 0]; move(e);
+  stickTimer = setInterval(() => act('/api/drive', { thr: stick[0], turn: stick[1] }), 100); });
+pad.addEventListener('pointermove', e => stick && move(e));
+function move(e) {
+  const b = pad.getBoundingClientRect(); let dx = (e.clientX - b.left) / b.width * 2 - 1, dy = (e.clientY - b.top) / b.height * 2 - 1;
+  const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
+  setKnob(dx, dy); stick = [-dy, -dx];
+}
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => pad.addEventListener(t, () => {
+  if (!stick) return; clearInterval(stickTimer); stick = null; setKnob(0, 0); act('/api/drive', { thr: 0, turn: 0 });
+}));
+
+// joint sliders (the robot's calibrated range)
+const NAMES = ['Base', 'Shoulder', 'Elbow', 'Wrist flex', 'Wrist roll', 'Gripper'];
+let slidersBuilt = false, dragging = -1, sendTimer = null;
+function buildSliders(a) {
+  $('sliders').innerHTML = NAMES.map((n, i) => `<label>${n}<input type="range" min="${a.lo[i]}" max="${a.hi[i]}" step="0.5" data-i="${i}"><span class="mono" id="sv${i}"></span></label>`).join('');
+  document.querySelectorAll('#sliders input').forEach(inp => {
+    inp.addEventListener('pointerdown', () => dragging = +inp.dataset.i);
+    inp.addEventListener('pointerup', () => dragging = -1);
+    inp.addEventListener('input', () => {
+      $('sv' + inp.dataset.i).textContent = (+inp.value).toFixed(0);
+      clearTimeout(sendTimer); sendTimer = setTimeout(() => act('/api/joint', { i: +inp.dataset.i, deg: +inp.value }), 120);
+    });
+  });
+  slidersBuilt = true;
+}
+function syncSliders(a) {
+  const q = Object.values(a.joints);
+  document.querySelectorAll('#sliders input').forEach((inp, i) => { if (i !== dragging) { inp.value = q[i]; $('sv' + i).textContent = q[i].toFixed(0); } });
+}
 </script>
 </body>
 </html>

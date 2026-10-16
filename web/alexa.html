@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reach · Alexa+ simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d10; --panel: #13161a; --line: #262b31; --ink: #f2f4f5; --ink-2: #aab3ba; --ink-3: #6d767d;
+    --alexa: #00caff; --alexa-2: #2b6dff; --good: #5cc5a7; --warn: #f2b33d; --bad: #ef5b4c;
+  }
+  :root[data-theme="light"] { --bg: #eef1f3; --panel: #ffffff; --line: #d9dee2; --ink: #11161a; --ink-2: #4b555c; --ink-3: #7d878e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.45 "Atkinson Hyperlegible", system-ui, sans-serif; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 40px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px; }
+  header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 22px; }
+  header .sub { color: var(--ink-3); font-size: 14px; }
+  header a { color: var(--alexa); }
+
+  .device { background: #000; border-radius: 26px; padding: 14px; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); }
+  .screen { position: relative; border-radius: 16px; min-height: 470px; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto;
+    background: radial-gradient(120% 90% at 20% 0%, #14324a 0%, #0b1a28 45%, #05090e 100%); color: #fff; padding: 26px 30px; }
+  .clock { font-size: 15px; opacity: .7; }
+  .say { align-self: center; }
+  .heard { font-size: 18px; opacity: .65; min-height: 26px; }
+  .reply { font-size: 34px; line-height: 1.2; font-weight: 700; margin-top: 10px; min-height: 84px; max-width: 26ch; }
+  .card { display: inline-flex; gap: 10px; align-items: center; margin-top: 16px; padding: 10px 14px; border-radius: 12px;
+    background: rgba(255,255,255,.08); font-size: 15px; }
+  .card i { width: 10px; height: 10px; border-radius: 50%; background: var(--good); display: inline-block; }
+  .card.busy i { background: var(--warn); animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .3 } }
+  .bar { height: 6px; border-radius: 3px; background: transparent; position: relative; overflow: hidden; margin-top: 18px; }
+  .bar::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--alexa), var(--alexa-2), var(--alexa), transparent);
+    transform: translateX(-100%); opacity: 0; }
+  .bar.listening::before { opacity: 1; animation: sweep 1.2s ease-in-out infinite; }
+  .bar.thinking::before { opacity: 1; animation: sweep .6s linear infinite; }
+  .bar.speaking { background: linear-gradient(90deg, var(--alexa-2), var(--alexa)); animation: pulse 1s ease-in-out infinite; }
+  @keyframes sweep { to { transform: translateX(100%) } }
+  @keyframes pulse { 50% { opacity: .45 } }
+
+  .controls { display: flex; gap: 10px; margin-top: 14px; }
+  .mic { width: 64px; height: 64px; border-radius: 50%; border: 0; background: var(--alexa-2); color: #fff; font-size: 26px; cursor: pointer; flex: none; }
+  .mic.on { background: var(--alexa); box-shadow: 0 0 0 8px rgba(0,202,255,.2); }
+  .mic:disabled { background: #39424a; cursor: not-allowed; }
+  form { flex: 1; display: flex; gap: 8px; }
+  input[type=text] { flex: 1; min-width: 0; font: inherit; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  form button { font: inherit; padding: 0 16px; border-radius: 12px; border: 0; background: var(--ink); color: var(--bg); cursor: pointer; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chips button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink-2); cursor: pointer; }
+  .chips button:hover { border-color: var(--alexa); color: var(--ink); }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  .panel h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); }
+  .panel p.lead { margin: 0 0 14px; color: var(--ink-2); font-size: 14px; }
+  .engine { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); }
+  ol.calls { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 470px; overflow: auto; }
+  ol.calls li { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  ol.calls .top { display: flex; justify-content: space-between; gap: 8px; }
+  ol.calls .tool { color: var(--alexa); font-weight: 500; }
+  ol.calls .ms { color: var(--ink-3); }
+  ol.calls .ms.fast { color: var(--good); }
+  ol.calls .res { color: var(--ink-2); margin-top: 4px; font-family: "Atkinson Hyperlegible", sans-serif; font-size: 14px; }
+  ol.calls li.new { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { border-color: var(--alexa); background: rgba(0,202,255,.08); } }
+  .empty { color: var(--ink-3); font-size: 14px; }
+  .stop { margin-top: 14px; width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--bad); color: #fff; font: 700 18px/1 inherit; letter-spacing: .06em; cursor: pointer; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } .reply { font-size: 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Alexa+ simulator · Reach add-on</h1>
+      <div class="sub">The same MCP tools real Alexa+ calls. Speech and the model are simulated in the browser. <a href="/">Robot dashboard →</a></div></div>
+    <span class="engine mono" id="engine">engine: …</span>
+  </header>
+
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="clock" id="clock"></div>
+        <div class="say">
+          <div class="heard" id="heard">Hold the mic and say “Alexa, ask Reach to bring me my pills”.</div>
+          <div class="reply" id="reply"></div>
+          <div class="card" id="card"><i></i><span id="robot">Reach is resting and ready</span></div>
+        </div>
+        <div class="bar" id="bar"></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="mic" id="mic" title="Hold to talk">🎙</button>
+      <form id="form"><input type="text" id="text" placeholder="…or type what you'd say to Alexa" autocomplete="off"><button>Send</button></form>
+    </div>
+    <div class="chips" id="chips">
+      <button>Alexa, ask Reach to bring me my pills</button>
+      <button>I've got it, thanks</button>
+      <button>Did I take my pills today?</button>
+      <button>What can Reach bring me?</button>
+      <button>Stop!</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Under the hood · MCP tool calls</h2>
+    <p class="lead">Every request Alexa+ sends to the Reach server, newest first, with server-side latency (Alexa+ allows 500 ms).</p>
+    <ol class="calls" id="calls"><li class="empty">No calls yet.</li></ol>
+    <button class="stop" id="stop">STOP THE ROBOT</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let pin = sessionStorage.getItem('reachPin') || '';
+let lastStage = '', seen = 0;
+
+const tick = () => { $('clock').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+tick(); setInterval(tick, 10000);
+
+function bar(mode) { $('bar').className = 'bar ' + (mode || ''); }
+
+function speak(text) {
+  return new Promise(res => {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      const v = speechSynthesis.getVoices().find(v => /en-(US|GB)/.test(v.lang) && /Samantha|Google US English|Female|Aria|Jenny/i.test(v.name));
+      if (v) u.voice = v;
+      u.rate = 1.02;
+      u.onend = u.onerror = () => { bar(); res(); };
+      bar('speaking');
+      speechSynthesis.speak(u);
+    } catch { res(); }
+  });
+}
+
+async function ask(text) {
+  text = text.trim();
+  if (!text) return;
+  $('heard').textContent = `“${text}”`;
+  $('reply').textContent = '';
+  bar('thinking');
+  const utter = text.replace(/^(hey\s+)?alexa[,\s]+/i, '').replace(/^(ask|tell)\s+reach\s+(to\s+)?/i, '');
+  const r = await fetch('/api/alexa', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Reach-Pin': pin },
+                                        body: JSON.stringify({ text: utter, session: 'web' }) });
+  if (r.status === 401) { pin = prompt('Household PIN') || ''; sessionStorage.setItem('reachPin', pin); return pin && ask(text); }
+  const j = await r.json();
+  $('reply').textContent = j.reply || j.error || '';
+  if (j.engine) $('engine').textContent = 'engine: ' + j.engine;
+  await speak(j.reply || '');
+}
+
+$('form').onsubmit = e => { e.preventDefault(); ask($('text').value); $('text').value = ''; };
+$('chips').querySelectorAll('button').forEach(b => b.onclick = () => ask(b.textContent));
+$('stop').onclick = async () => { await fetch('/api/stop', { method: 'POST' }); $('reply').textContent = 'Stopped.'; speak('Stopped.'); };
+
+// Push-to-talk with the browser's speech recognition (Chrome / Edge / Safari).
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) { $('mic').disabled = true; $('mic').title = 'Speech recognition not available in this browser: type instead'; }
+else {
+  const rec = new SR(); rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false;
+  let final = '';
+  rec.onresult = e => { final = Array.from(e.results).map(r => r[0].transcript).join(' '); $('heard').textContent = `“${final}”`; };
+  rec.onend = () => { $('mic').classList.remove('on'); if (final) ask(final); else bar(); final = ''; };
+  const start = e => { e.preventDefault(); speechSynthesis.cancel(); final = ''; $('mic').classList.add('on'); bar('listening'); try { rec.start(); } catch {} };
+  const stop = () => { try { rec.stop(); } catch {} };
+  $('mic').addEventListener('pointerdown', start);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => $('mic').addEventListener(t, stop));
+}
+
+// Robot status + the MCP call log.
+async function poll() {
+  try {
+    const s = await (await fetch('/api/state')).json();
+    $('engine').textContent = 'engine: ' + s.alexa_engine + ' · robot: ' + s.arm.backend;
+    const j = s.job, busy = s.busy;
+    $('card').classList.toggle('busy', busy);
+    $('robot').textContent = !j ? 'Reach is resting and ready'
+      : busy ? `Reach is ${j.stage}` : ({ taken: `Brought your ${j.item}`, stopped: 'Reach stopped', failed: 'Reach hit a problem', taught: 'Reach is ready' }[j.outcome] || 'Reach is ready');
+    // Simulator nicety: say so when the item is ready to take (real Alexa+ would need a proactive notification).
+    const stage = j && busy ? j.stage : '';
+    if (stage === 'holding it out' && lastStage !== stage) { $('reply').textContent = `Here's your ${j.item}. Take it and say "I've got it".`; speak($('reply').textContent); }
+    lastStage = stage;
+    const calls = s.calls.slice().reverse();
+    if (calls.length) {
+      $('calls').innerHTML = calls.map((c, i) => `<li class="${i < calls.length - seen ? '' : ''}${i === 0 && calls.length !== seen ? 'new' : ''}">
+        <div class="top mono"><span><span class="tool">${c.tool}</span>(${esc(JSON.stringify(c.args))})</span><span class="ms ${c.ms < 500 ? 'fast' : ''}">${c.ms} ms</span></div>
+        <div class="res">${esc(c.result)}</div></li>`).join('');
+      seen = calls.length;
+    }
+  } catch {}
+  setTimeout(poll, 400);
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+poll();
+</script>
+</body>
+</html>

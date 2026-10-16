@@ -1,12 +1,14 @@
 # Reach
 
-**"Alexa, ask Reach to bring me my pills."** A robot arm next to someone who
-can't easily get up picks the item up, holds it out to them, and lets go
-when they say they have it.
+**"Alexa, ask Reach to bring me my pills."** A small robot drives to where the
+pills are, picks them up, comes back and holds them out to someone who can't
+easily get up, then lets go when they say they have it.
 
-Assistive robot arms exist, but they cost tens of thousands of dollars and need
-their own app or joystick. Reach uses a 3-D-printable SO-101 arm and the voice
-assistant people already have.
+Assistive robot arms cost tens of thousands of dollars and need their own app or
+joystick. Reach runs on the **Thenar Walker**, a 3-D-printed four-wheel robot
+carrying an SO-101 arm (built for Techfest RoboReach,
+[nickthelegend/thenar-walker](https://github.com/nickthelegend/thenar-walker)),
+and on the voice assistant people already have.
 
 Built for **Build, Ship, Shape: Amazon Developer Hackathon**, Alexa+ track
 (+ AWS Builder mini challenge).
@@ -21,6 +23,23 @@ Built for **Build, Ship, Shape: Amazon Developer Hackathon**, Alexa+ track
 | "did I take my pills today?" | "I handed you your pills today at 8:14 AM" |
 | "what can you bring me?" | the items it knows |
 | "remember this is my blood pressure pills" | a helper put the arm on the item; it saves the spot |
+
+## Teach once, fetch by voice
+
+There's no camera and no map. A helper teaches each place once from the dashboard's
+**Teach a place** tab:
+1. Start at the robot's home spot beside the person.
+2. Drive to the item with the joystick.
+3. Close the gripper on it with the sliders, then press save.
+
+Reach stores the route and the grip, and the robot drives itself home. A fetch then:
+1. replays the route
+2. hovers above the item and grips it (the hover moves the arm toward its folded home pose, so it
+   works on any robot without knowing joint directions)
+3. retraces the route in reverse
+4. holds the item out
+
+Routes are open loop, so keep them short (a few metres on a flat floor).
 
 ## How it works
 
@@ -46,6 +65,20 @@ Alexa+ ──(MCP 2025-11-25, Streamable HTTP, OAuth 2.1 + PKCE)──► Reach 
   (S256) and rotating refresh tokens. A household-PIN consent page confirms the
   link, and an unauthenticated call gets a bare 401 with no `WWW-Authenticate`
   header, as Alexa+ requires.
+- **The Thenar Walker** (`reach/walker.py`). It speaks the robot firmware's WebSocket protocol on
+  the robot's own Wi-Fi (`ws://192.168.4.1:81/`):
+  - Joints switch on one at a time, within the robot's calibrated limits.
+  - A 40 ms drive heartbeat keeps the firmware's 300 ms failsafe meaningful: if REACH dies, the
+    robot stops.
+  - Stops and drive changes go out immediately.
+
+  `reach/mock_walker.py` mirrors the firmware for tests.
+- **Simulated Alexa+** (`reach/alexa_sim.py`, page `/alexa`). This is the hackathon's simulated
+  Alexa+ path.
+  - It's a real MCP client to this server that discovers the tools and lets a model choose them:
+    AWS Bedrock (Converse tool use), any OpenAI-compatible model, or offline rules.
+  - Browser speech in and out.
+  - Every tool call is shown with its latency.
 - **Taught places, not hard-coded coordinates** (`reach/world.py`). The starter
   layout was solved with the arm's inverse kinematics. Real places are taught by
   putting the arm on the item and saying "remember…".
@@ -58,13 +91,27 @@ REACH_AUTH=0 .venv/bin/python -m reach.server        # simulated arm, http://loc
 .venv/bin/python -m pytest -q                        # real server + MCP client + OAuth flow
 ```
 
-With the SO-101 follower on USB:
+With the Thenar Walker (join its `<Team>_TF` Wi-Fi first; keep internet through Ethernet or a
+phone tether for the model):
+
+```bash
+REACH_ARM=walker .venv/bin/python -m reach.server          # dashboard :8790, simulator :8790/alexa
+```
+
+Simulated Alexa+ with Bedrock: set `AWS_PROFILE` (or keys), `AWS_REGION`, and
+`REACH_BEDROCK_MODEL`. With any OpenAI-compatible model: set `REACH_LLM_BASE_URL`,
+`REACH_LLM_API_KEY` and `REACH_LLM_MODEL`.
+
+With a bench SO-101 follower on USB:
 
 ```bash
 REACH_ARM=/dev/cu.usbserial-XXXX THENAR_ARMS_DIR=~/thenar-arms .venv/bin/python -m reach.server
 ```
 
-## Connect it to Alexa+
+## Connect it to real Alexa+
+
+Alexa+ add-ons are in private preview: request access, and you'll receive the Alexa AI CLI
+(`@alexa-ai/cli`, not public on npm).
 
 1. Expose the server over HTTPS, e.g.
    `cloudflared tunnel --url http://localhost:8790`. Set `REACH_BASE_URL` to that
@@ -80,9 +127,15 @@ REACH_ARM=/dev/cu.usbserial-XXXX THENAR_ARMS_DIR=~/thenar-arms .venv/bin/python 
 
 ## Status
 
-- **Tested:** the server, the tools, stop, the medication log, and the OAuth flow
-  (automated tests), plus the dashboard with the simulated arm.
-- **Not yet done:** deploying to Alexa+ and running on a physical SO-101.
+- **Tested:** 9 automated tests.
+  - the MCP tools over Streamable HTTP and the OAuth PKCE flow
+  - the Walker driver against the mock firmware
+  - exact route reversal
+  - teach → voice fetch → handover → medication log
+  - stop always winning
+- **Checked in the browser:** the dashboard and the simulator.
+- **Not yet done:** running on the physical Walker, and real Alexa+, which is gated by its
+  preview.
 
 ## License
 
