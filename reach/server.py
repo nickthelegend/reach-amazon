@@ -13,6 +13,7 @@ Env:   REACH_ARM=sim | walker | /dev/cu.usbserial-XXXX   which robot (default si
        REACH_AUTH=0                               no OAuth (local testing with MCP Inspector)
        REACH_OWNER_PIN, REACH_CLIENT_ID, REACH_CLIENT_SECRET, REACH_REDIRECT_URIS   (auth.py)
        THENAR_ARMS_DIR                            path to thenar-arms, for the SO-101 table guard
+       CHATTERBOX_URL, REACH_VOICE=0              Reach's voice (tts.py); cached under data/voice
 """
 
 from __future__ import annotations
@@ -37,11 +38,13 @@ from mcp.types import ToolAnnotations
 
 from collections import deque
 
+from . import lines
 from .alexa_sim import AlexaSim
 from .arm import SimArm, SO101Arm, Stopped, load_guard
 from .walker import WalkerArm
 from .auth import SCOPE, ReachAuth, StripWWWAuthenticate
 from .jobs import Runner
+from .tts import MAX_CHARS, Voice, key
 from .world import World
 
 log = logging.getLogger("reach")
@@ -61,6 +64,7 @@ else:
     arm = SO101Arm(arm_spec, load_guard(os.getenv("THENAR_ARMS_DIR")))
 arm.speedup = float(os.getenv("REACH_SIM_SPEEDUP", "1")) if arm_spec == "sim" else 1.0
 runner = Runner(arm, world)
+voice = Voice(DATA / "voice")
 _arm_ready: asyncio.Task | None = None
 
 
@@ -110,9 +114,15 @@ READ = ToolAnnotations(readOnlyHint=True, openWorldHint=False)
 ACT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 
 
-def _items_sentence() -> str:
-    names = sorted(world.places)
-    return ", ".join(names[:-1]) + (" and " + names[-1] if len(names) > 1 else (names[0] if names else "nothing yet"))
+def voice_lines() -> list[str]:
+    """Every reply the tools can give for the items known now (see lines.py)."""
+    return lines.voice_lines(world.places.values(), arm.has_base)
+
+
+def _voice_catalog() -> None:
+    """Tell the voice what Reach can say, so it renders those lines in the background."""
+    voice.catalog(voice_lines())
+    voice.start()  # (re)starts the worker if it isn't running
 
 
 @mcp.tool(annotations=ACT)
@@ -125,15 +135,12 @@ async def fetch_item(item: str) -> str:
     """
     place = world.find(item)
     if not place:
-        return f"I don't know where the {item} is. I can bring your {_items_sentence()}."
+        return f"I don't know where the {item} is. {lines.can_bring(world.places)}"
     if runner.busy():
-        return f"I'm still busy with the {runner.job.item}. Say stop if you want me to stop."
+        return lines.busy_reply(runner.job.item)
     await ensure_arm()
     runner.start_fetch(place)
-    if place.route and arm.has_base:
-        secs = sum(s for s, _, _ in place.route) * 2 + 20
-        return f"On my way to get your {place.name}. I'll bring it over in about {round(secs / 10) * 10} seconds. Tell me when you've got it."
-    return f"On my way to get your {place.name}. I'll hold it out in about fifteen seconds. Tell me when you've got it."
+    return lines.fetch_reply(place.name, place.route, arm.has_base)
 
 
 @mcp.tool(annotations=ACT)
@@ -141,10 +148,10 @@ async def fetch_item(item: str) -> str:
 async def got_it() -> str:
     """The person has taken the item the arm is holding out. Opens the gripper and sends the arm home."""
     if runner.taken():
-        return "Okay, letting go."
+        return lines.LETTING_GO
     if runner.busy():
-        return f"I'm still {runner.job.stage}. I'll tell you when it's ready to take."
-    return "I'm not holding anything right now."
+        return lines.got_it_busy(runner.job.stage)
+    return lines.NOT_HOLDING
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False))
@@ -152,7 +159,7 @@ async def got_it() -> str:
 async def stop_arm() -> str:
     """Stop the arm right now, wherever it is. Use whenever the person says stop, wait, or sounds alarmed."""
     await runner.stop()
-    return "Stopped."
+    return lines.STOPPED
 
 
 @mcp.tool(annotations=READ)
@@ -160,19 +167,18 @@ async def stop_arm() -> str:
 async def arm_status() -> str:
     """What the arm is doing right now, e.g. still bringing the pills, or holding them out."""
     if not runner.job:
-        return "I'm resting and ready."
+        return lines.RESTING
     j = runner.job
     if runner.busy():
-        return f"I'm {j.stage}." if j.stage != "holding it out" else f"I'm holding out your {j.item}. Say you've got it when you take it."
-    return {"taken": f"I brought your {j.item}.", "not_taken": f"Nobody took the {j.item}, so I put it back.",
-            "stopped": "I stopped.", "failed": f"Something went wrong getting the {j.item}: {j.detail}."}.get(j.outcome or "", "I'm ready.")
+        return lines.status_busy(j.stage, j.item)
+    return lines.status_done(j.outcome, j.item, j.detail)
 
 
 @mcp.tool(annotations=READ)
 @logged
 async def list_items() -> str:
     """The items the arm knows how to bring."""
-    return f"I can bring your {_items_sentence()}."
+    return lines.can_bring(world.places)
 
 
 @mcp.tool(annotations=READ)
@@ -182,7 +188,7 @@ async def medication_today() -> str:
     "did I take my pills?"."""
     taken = world.medication_today()
     if not taken:
-        return "I haven't handed you any medication today."
+        return lines.NO_MEDS
     times = [time.strftime("%-I:%M %p", time.localtime(e["t"])) for e in taken]
     items = sorted({e["item"] for e in taken})
     return f"I handed you your {' and '.join(items)} today at {', '.join(times)}."
@@ -197,10 +203,11 @@ async def remember_item(name: str, is_medication: bool = False) -> str:
     name: what to call it, e.g. "blood pressure pills". is_medication: track it in the medication log.
     """
     if runner.busy():
-        return "I can't learn a spot while I'm moving."
+        return lines.CANT_LEARN
     route = _close_segment() if teach["item"] is not None else None
     p = world.remember(name, arm.q.tolist(), is_medication, route)
-    return f"Got it. I'll remember where your {p.name} {'are' if p.name.endswith('s') else 'is'}."
+    _voice_catalog()
+    return lines.remember_reply(p.name)
 
 
 # ---------------------------------------------------------------- dashboard ----
@@ -229,7 +236,25 @@ async def state(request: Request) -> Response:
                   "seconds": round(sum(x[0] for x in teach["segments"]), 1)},
         "auth": AUTH_ON,
         "alexa_engine": alexa.engine,
+        "voice": voice.status(),
     })
+
+
+@mcp.custom_route("/api/voice", methods=["GET"])
+async def api_voice(request: Request) -> Response:
+    """?text=<a line Reach says> -> 200 its Chatterbox WAV | 204 not rendered yet (moved to the front of
+    the queue; use the browser's voice this time) | 404 not a line Reach knows, or the voice is off.
+    Never waits on Chatterbox. No PIN: only catalog lines can be queued."""
+    text = key(request.query_params.get("text", ""))
+    if not text or len(text) > MAX_CHARS:
+        return JSONResponse({"error": f"text must be 1-{MAX_CHARS} characters"}, 400)
+    if not voice.enabled or text not in voice.known:
+        return Response(status_code=404)
+    if (p := voice.ready(text)):
+        return FileResponse(p, media_type="audio/wav", headers={"Cache-Control": "private, max-age=86400"})
+    voice.want(text, urgent=True)
+    voice.start()
+    return Response(status_code=204)
 
 
 @mcp.custom_route("/api/stop", methods=["POST"])
@@ -341,6 +366,7 @@ async def api_teach(request: Request) -> Response:
         route = _close_segment()
         p = world.remember(teach["item"], arm.q.tolist(), bool(b.get("medication")), route)
         teach["item"] = None
+        _voice_catalog()
         if route and arm.has_base:  # take it home again, the way it came (a job, so nothing else can start meanwhile)
             runner.start_return(route, p.name)
         return JSONResponse({"saved": p.name, "segments": len(route), "pose": p.pose})
@@ -380,6 +406,20 @@ if auth:
     mcp.custom_route("/link", methods=["GET", "POST"])(auth.link_page)
 
 
+class VoiceStartup:
+    """Start rendering Reach's lines on the first ASGI call (uvicorn's lifespan startup), inside the
+    running event loop, so prerendering begins as soon as the server is up."""
+
+    def __init__(self, app):
+        self.app, self.started = app, False
+
+    async def __call__(self, scope, receive, send):
+        if not self.started:
+            self.started = True
+            _voice_catalog()
+        await self.app(scope, receive, send)
+
+
 def app():
     host = BASE_URL.split("://", 1)[-1].split("/")[0]
     security = TransportSecuritySettings(
@@ -387,7 +427,7 @@ def app():
         allowed_hosts=[host, f"localhost:{PORT}", f"127.0.0.1:{PORT}"],
         allowed_origins=[BASE_URL, f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}"],
     )
-    return StripWWWAuthenticate(mcp.streamable_http_app(transport_security=security, host="0.0.0.0"))
+    return VoiceStartup(StripWWWAuthenticate(mcp.streamable_http_app(transport_security=security, host="0.0.0.0")))
 
 
 if __name__ == "__main__":

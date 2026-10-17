@@ -122,20 +122,86 @@ tick(); setInterval(tick, 10000);
 
 function bar(mode) { $('bar').className = 'bar ' + (mode || ''); }
 
+// Reach's voice: the Chatterbox clip when the server has rendered it, otherwise the browser's
+// voice at once. Nothing waits on Chatterbox: /api/voice only looks on disk, and we give it 300 ms.
+const audio = new Audio();
+const clips = new Map();  // text -> blob URL, least recently used first, at most 30
+let gen = 0, pending = null;  // pending: the speak() in progress, {ctl, done}
+
+function hush() {  // stop talking now; the speak() in progress resolves
+  gen++;
+  if (pending) { pending.ctl.abort(); pending.done(); pending = null; }
+  try { speechSynthesis.cancel(); } catch {}
+  audio.pause();
+  bar();
+}
+
+async function clip(text, signal) {
+  if (clips.has(text)) { const url = clips.get(text); clips.delete(text); clips.set(text, url); return url; }
+  const r = await fetch('/api/voice?text=' + encodeURIComponent(text), { signal });
+  if (r.status !== 200) return null;
+  const url = URL.createObjectURL(await r.blob());
+  clips.set(text, url);
+  if (clips.size > 30) { const [old, u] = clips.entries().next().value; clips.delete(old); URL.revokeObjectURL(u); }
+  return url;
+}
+
+function browserSpeak(text, done) {
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    const v = speechSynthesis.getVoices().find(v => /en-(US|GB)/.test(v.lang) && /Samantha|Google US English|Female|Aria|Jenny/i.test(v.name));
+    if (v) u.voice = v;
+    u.rate = 1.02;
+    u.onend = u.onerror = done;
+    bar('speaking');
+    speechSynthesis.speak(u);
+  } catch { done(); }
+}
+
 function speak(text) {
+  hush();
+  if (!text) return Promise.resolve();
+  const my = gen, ctl = new AbortController();
   return new Promise(res => {
-    try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      const v = speechSynthesis.getVoices().find(v => /en-(US|GB)/.test(v.lang) && /Samantha|Google US English|Female|Aria|Jenny/i.test(v.name));
-      if (v) u.voice = v;
-      u.rate = 1.02;
-      u.onend = u.onerror = () => { bar(); res(); };
-      bar('speaking');
-      speechSynthesis.speak(u);
-    } catch { res(); }
+    let over = false;
+    const done = () => { if (over) return; over = true; if (pending && pending.ctl === ctl) pending = null; if (gen === my) bar(); res(); };
+    pending = { ctl, done };
+    const timer = setTimeout(() => ctl.abort(), 300);
+    let fell = false;
+    const fallback = () => { if (!fell) { fell = true; browserSpeak(text, done); } };
+    clip(text, ctl.signal).catch(() => null).then(async url => {
+      clearTimeout(timer);
+      if (gen !== my) return;  // hushed meanwhile; done() already ran
+      if (url) {
+        audio.onended = done;
+        audio.onerror = () => gen === my ? fallback() : done();  // the clip broke mid-play: say it anyway
+        audio.src = url; audio.muted = false;
+        try { bar('speaking'); await audio.play(); return; } catch {}
+        if (gen !== my) return;
+      }
+      fallback();
+    });
   });
 }
+
+// Browsers only let a page play audio it didn't start from a click once it has played something
+// from one: play a moment of silence on the first touch, so poll-triggered lines can use the clip too.
+const silence = (() => {
+  const b = new DataView(new ArrayBuffer(44 + 800)), s = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+  s(0, 'RIFF'); b.setUint32(4, 36 + 800, true); s(8, 'WAVEfmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true);
+  b.setUint16(22, 1, true); b.setUint32(24, 8000, true); b.setUint32(28, 8000, true); b.setUint16(32, 1, true);
+  b.setUint16(34, 8, true); s(36, 'data'); b.setUint32(40, 800, true);
+  for (let i = 44; i < 844; i++) b.setUint8(i, 128);
+  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+})();
+function unlock() {
+  removeEventListener('pointerdown', unlock, true); removeEventListener('keydown', unlock, true);
+  if (audio.src) return;
+  audio.src = silence; audio.muted = true;
+  audio.play().then(() => { if (audio.src === silence) audio.pause(); }).catch(() => {});
+}
+addEventListener('pointerdown', unlock, true); addEventListener('keydown', unlock, true);
+['Stopped.', 'Okay, letting go.'].forEach(t => clip(t).catch(() => {}));  // the lines that must never lag
 
 async function ask(text) {
   text = text.trim();
@@ -155,7 +221,7 @@ async function ask(text) {
 
 $('form').onsubmit = e => { e.preventDefault(); ask($('text').value); $('text').value = ''; };
 $('chips').querySelectorAll('button').forEach(b => b.onclick = () => ask(b.textContent));
-$('stop').onclick = async () => { await fetch('/api/stop', { method: 'POST' }); $('reply').textContent = 'Stopped.'; speak('Stopped.'); };
+$('stop').onclick = async () => { hush(); await fetch('/api/stop', { method: 'POST' }); $('reply').textContent = 'Stopped.'; speak('Stopped.'); };
 
 // Push-to-talk with the browser's speech recognition (Chrome / Edge / Safari).
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -165,7 +231,7 @@ else {
   let final = '';
   rec.onresult = e => { final = Array.from(e.results).map(r => r[0].transcript).join(' '); $('heard').textContent = `“${final}”`; };
   rec.onend = () => { $('mic').classList.remove('on'); if (final) ask(final); else bar(); final = ''; };
-  const start = e => { e.preventDefault(); speechSynthesis.cancel(); final = ''; $('mic').classList.add('on'); bar('listening'); try { rec.start(); } catch {} };
+  const start = e => { e.preventDefault(); hush(); final = ''; $('mic').classList.add('on'); bar('listening'); try { rec.start(); } catch {} };
   const stop = () => { try { rec.stop(); } catch {} };
   $('mic').addEventListener('pointerdown', start);
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => $('mic').addEventListener(t, stop));
@@ -175,14 +241,15 @@ else {
 async function poll() {
   try {
     const s = await (await fetch('/api/state')).json();
-    $('engine').textContent = 'engine: ' + s.alexa_engine + ' · robot: ' + s.arm.backend;
+    $('engine').textContent = 'engine: ' + s.alexa_engine + ' · robot: ' + s.arm.backend
+      + (s.voice && s.voice.enabled ? ` · voice: ${s.voice.ready}/${s.voice.known} ready` : ' · voice: browser');
     const j = s.job, busy = s.busy;
     $('card').classList.toggle('busy', busy);
     $('robot').textContent = !j ? 'Reach is resting and ready'
       : busy ? `Reach is ${j.stage}` : ({ taken: `Brought your ${j.item}`, stopped: 'Reach stopped', failed: 'Reach hit a problem', taught: 'Reach is ready' }[j.outcome] || 'Reach is ready');
     // Simulator nicety: say so when the item is ready to take (real Alexa+ would need a proactive notification).
     const stage = j && busy ? j.stage : '';
-    if (stage === 'holding it out' && lastStage !== stage) { $('reply').textContent = `Here's your ${j.item}. Take it and say "I've got it".`; speak($('reply').textContent); }
+    if (stage === 'holding it out' && lastStage !== stage) { $('reply').textContent = j.say || `Here's your ${j.item}. Take it and say "I've got it".`; speak($('reply').textContent); }
     lastStage = stage;
     const calls = s.calls.slice().reverse();
     if (calls.length) {

@@ -24,6 +24,8 @@ import httpx
 
 from mcp import Client
 
+from .lines import DIDNT_CATCH
+
 log = logging.getLogger("reach.alexa")
 
 SYSTEM = (
@@ -89,7 +91,7 @@ class AlexaSim:
         m = re.search(r"(?:bring|get|fetch|pass|hand|give|grab)(?: me)?(?: the| my)?\s+(.+?)(?: please| now|\?|$)", s)
         if m:
             return await call("fetch_item", {"item": m.group(1).strip()})
-        return "Sorry, I didn't catch that. You can say, bring me my pills."
+        return DIDNT_CATCH
 
     # ------------------------------------------------------- openai-style ----
     async def _openai(self, text: str, session: str, tools, call) -> str:

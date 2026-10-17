@@ -37,7 +37,9 @@ def server(tmp_path, request):
            "REACH_SIM_SPEEDUP": "25", "REACH_AUTH": "1" if auth else "0", "REACH_OWNER_PIN": "2468",
            "REACH_CLIENT_ID": "alexa-test", "REACH_CLIENT_SECRET": "s3cret",
            "REACH_REDIRECT_URIS": "https://layla.amazon.com/api/skill/link/TEST",
-           "REACH_BASE_URL": f"http://127.0.0.1:{port}"}
+           "REACH_BASE_URL": f"http://127.0.0.1:{port}",
+           # a dead port: tests never reach a Chatterbox running on this machine, so they pass offline
+           "CHATTERBOX_URL": f"http://127.0.0.1:{free_port()}", "REACH_VOICE": "1"}
     proc = subprocess.Popen([sys.executable, "-m", "reach.server"], cwd=ROOT, env=env,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     base = f"http://127.0.0.1:{port}"

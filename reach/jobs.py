@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from .arm import Arm, Stopped
+from .lines import holding_line
 from .world import HANDOVER, Place, World
 
 log = logging.getLogger("reach.jobs")
@@ -43,7 +44,8 @@ class Job:
 
     def view(self) -> dict:
         return {"item": self.item, "stage": self.stage, "outcome": self.outcome, "detail": self.detail,
-                "seconds": round((self.finished or time.time()) - self.started, 1)}
+                "seconds": round((self.finished or time.time()) - self.started, 1),
+                "say": holding_line(self.item) if self.stage == "holding it out" else None}
 
 
 def hover_of(grip: np.ndarray, home: np.ndarray, gripper: float) -> np.ndarray:
